@@ -20,8 +20,9 @@ vim.opt.cursorline = true -- highlight current line
 vim.opt.wrap = false -- do not wrap lines by default
 vim.opt.scrolloff = 10 -- keep 10 lines above/below cursor vs top/bottom
 vim.opt.sidescrolloff = 8 -- keep 8 positions to left/right of cursor vs side
-vim.opt.spell = true -- enable spell check (toggle idea?)
+vim.opt.spell = false -- enable spell check (toggle idea?)
 -- vim.opt.linebreak = true -- lines wrap at wholewords (toggle; deprec/conditional?)
+vim.opt.breakindent = true -- on wrapped lines, preserve indent
 
 -- Indentation
 vim.opt.tabstop = 2 -- tab width
@@ -34,7 +35,7 @@ vim.opt.autoindent = true -- copy indent from current line
 -- Search settings
 vim.opt.ignorecase = true -- case insensitive search t(when use lc)
 vim.opt.smartcase = true -- case sensitive if uppercase in string (i.e. used uc)
-vim.opt.hlsearch = true -- highlight search matches
+vim.opt.hlsearch = false -- don't highlight search matches
 vim.opt.incsearch = true -- show matches as you type
 
 -- Visual settings
@@ -45,16 +46,20 @@ vim.cmd([[highlight ColorColumn ctermbg=darkgray guibg=#303030]])
 vim.opt.showmatch = true -- highlights matching brackets
 vim.opt.matchtime = 2 -- show match for 2 seconds
 vim.opt.cmdheight = 1 -- single line command line
-vim.opt.completeopt = "menuone,noinsert,noselect" -- completion options
-vim.opt.showmode = true -- do not show mode; just in statusline (once updated)
+vim.opt.complete = '.,w,b,o'
+vim.opt.completeopt = "menuone,noselect,fuzzy" -- completion options
+vim.opt.autocomplete = true -- enables overall completion feature
+vim.opt.autocompletedelay = 250
+vim.opt.showmode = false -- do not show mode; just in statusline (once updated)
 vim.opt.pumheight = 10 -- popupmenu height
 vim.opt.pumblend = 10 -- popupmenu transparency
 vim.opt.winblend = 0 -- floating window transparency
-vim.opt.conceallevel = 0 -- do not hide markup
+vim.opt.conceallevel = 2 -- hide markup for bold/italic, not subs
 vim.opt.concealcursor = "" -- do not hide cursorline in markup
 vim.opt.lazyredraw = true -- do not redraw during macros
 vim.opt.synmaxcol = 300 -- syntax highlighting limit
 vim.opt.fillchars = { eob = " " } -- hide "~" on empty lines
+vim.opt.virtualedit = "block" -- Allow cursor to move where there is no text in visual block mode
 
 local undodir = vim.fn.expand("~/.vim/undodir")
 if
@@ -74,6 +79,7 @@ vim.opt.timeoutlen = 500 -- timeout duration
 vim.opt.ttimeoutlen = 0 -- key code timeout
 vim.opt.autoread = true -- auto-reload changes if outside of neovim
 vim.opt.autowrite = false -- do not autosave
+vim.opt.confirm = true -- Confirm to save changes before exiting modified buffer
 
 vim.opt.hidden = true -- allow hidden buffers
 vim.opt.errorbells = false -- no error sounds
@@ -83,19 +89,25 @@ vim.opt.iskeyword:append("-") -- include - in words (i.e., def of one word)
 vim.opt.path:append("**") -- include subdirs in search
 vim.opt.selection = "inclusive" -- include last char in selection
 vim.opt.mouse = "" -- enable mouse support for scrolling & popup only
-vim.opt.clipboard:append("unnamedplus") -- use system clipboard
+
+-- Predefine tool arguments so nvim doesn't autosearch
 vim.g.clipboard = {
-  name = 'xclip',
+  name = 'myClipboard',
   copy = {
-    ['+'] = 'xclip -selection clipboard',
-    ['*'] = 'xclip -selection primary',
+    ['+'] = { 'xclip', '-i', '-selection', 'clipboard' },
+    ['*'] = { 'xclip', '-i', '-selection', 'primary' },
   },
   paste = {
-    ['+'] = 'xclip -selection clipboard -o',
-    ['*'] = 'xclip -selection primary -o',
+    ['+'] = { 'xclip', '-o', '-selection', 'clipboard' },
+    ['*'] = { 'xclip', '-o', '-selection', 'primary' },
   },
   cache_enabled = 1,
 }
+
+-- Defer enabling global register linkage to keep startup faster
+vim.schedule(function()
+  vim.opt.clipboard = 'unnamedplus'
+end)
 
 vim.opt.modifiable = true -- allow buffer modifications
 vim.opt.encoding = "utf-8" -- set encoding
@@ -117,4 +129,23 @@ vim.opt.diffopt:append("linematch:60") -- improve diff display
 vim.opt.redrawtime = 10000 -- increase neovim redraw tolerance
 vim.opt.maxmempattern = 20000 -- increase max memory
 
+vim.g.markdown_recommended_style = 0 -- let config or lsp govern markdown indents
 
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("lsp_completion", { clear = true }),
+  callback = function(args)
+    local client_id = args.data.client_id
+    if not client_id then
+      return
+    end
+
+    local client = vim.lsp.get_client_by_id(client_id)
+    if client and client:supports_method("textDocument/completion") then
+      -- Enable native LSP completion for this client + buffer
+      vim.lsp.completion.enable(true, client_id, args.buf, {
+        autotrigger = true,   -- auto-show menu as you type (recommended)
+        -- You can also set { autotrigger = false } and trigger manually with <C-x><C-o>
+      })
+    end
+  end,
+})
