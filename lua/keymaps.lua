@@ -16,6 +16,39 @@ vim.keymap.set("n", "<leader>w", ":set wrap!<CR>", { desc = "Toggle line wrappin
 -- Move by visual lines, not logical lines (great for wrapped markdown text)
 vim.keymap.set("n", "j", "gj", { silent = true, desc = "Move down visual line" })
 vim.keymap.set("n", "k", "gk", { silent = true, desc = "Move up visual line" })
+-- Toggle for conceallevel: 0 no conceal; 2 conceal
+vim.keymap.set('n', '<leader>tc', function()   
+  if vim.opt_local.conceallevel:get() == 0 then
+    vim.opt_local.conceallevel = 2             
+    print("Conceal level set to 2")            
+  else                                         
+    vim.opt_local.conceallevel = 0             
+    print("Conceal level set to 0")            
+  end                                          
+end, { desc = "Toggle [C]onceal level (0/2)" })
+-- Toggle for word wrap; when soft wrap enabled, wrap at word break
+vim.keymap.set('n', '<leader>tw', function()
+  -- Toggle the wrap option state
+  local wrapping = not vim.opt_local.wrap:get()
+  
+  vim.opt_local.wrap = wrapping
+  vim.opt_local.linebreak = wrapping -- Turns linebreak on/off matching wrap
+  
+  if wrapping then
+    print("Soft wrap enabled (with word boundary)")
+  else
+    print("Soft wrap disabled")
+  end
+end, { desc = "Toggle soft [W]rap" })
+-- Toggle for spell check
+vim.keymap.set('n', '<leader>ts', function()
+  vim.opt_local.spell = not vim.opt_local.spell:get()
+  if vim.opt_local.spell:get() then
+    print("Spell check enabled")
+  else
+    print("Spell check disabled")
+  end
+end, { desc = "Toggle [S]pell check" })
 
 
 
@@ -39,6 +72,9 @@ end, { expr = true, desc = "Change line without yanking" })
 vim.keymap.set("n", "J", "mzJ`z", { desc = "Join lines without moving cursor" })
 vim.keymap.set("n", "<leader>mj", "m .+1<CR>==", { desc = "Move line down 1" })
 vim.keymap.set("n", "<leader>mk", "m .-2<CR>==", { desc = "Move line up 1" })
+-- Re-align paragraph under cursor to match margin limits if a md file:
+--    gq triggers internal formatter; ap = "around paragraph".
+vim.keymap.set("n", "Q", "gqap", { desc = "Format current paragraph" })
 
 -- ***EDIT - VISUAL MODE***
 vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", { desc = "moves lines down in visual selection" })
@@ -61,7 +97,16 @@ vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "scroll up 1/2 pg, & center" })
 vim.keymap.set("n", "H", "^", { desc = "go to non-blank start of line" })
 vim.keymap.set("n", "L", "$", { desc = "go to end of line" })
 
--- ***SEARCH***
+-- ***WINDOWS AND SPLITS***
+--vim.keymap.set("n", "<leader>sv", "<C-w> v", { desc = "split window vertically" })
+--vim.keymap.set("n", "<leader>sh", ":sp", { desc = "split window horizontally" })
+--vim.keymap.set("n", "<C-h>", "<C-w>h", { desc = "move to window on left" })
+--vim.keymap.set("n", "<C-j>", "<C-w>j", { desc = "move to window below" })
+--vim.keymap.set("n", "<C-k>", "<C-w>k", { desc = "move to window above" })
+--vim.keymap.set("n", "<C-l>", "<C-w>l", { desc = "move to window on right" })
+
+
+--***SEARCH***
 vim.keymap.set("n", "n", "nzzzv", { desc = "Next search result cursor centered" })
 vim.keymap.set("n", "N", "Nzzzv", { desc = "Previous search result cursor centered" })
 vim.keymap.set("n", "<leader>s", [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]], { desc = "Replace word cursor is on globally" })
@@ -70,3 +115,14 @@ vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>", { desc = "Clear search highl
 -- ***FILES***
 vim.keymap.set("n", "<leader>w", "<cmd>w<CR>", { desc = "Quick save buffer" })
 vim.keymap.set("n", "<leader>cx", "<cmd>!chmod +x %<CR>", { silent = true, desc = "makes file executable" })
+
+-- ***MARKDOWN-RELATED***
+-- Jump to next/previous markdown header
+vim.keymap.set("n", "]]", [[:/^\s*#\+ /<CR>:nohlsearch<CR>]], { silent = true, desc = "Next header" })
+vim.keymap.set("n", "[[", [[:?^\s*#\+ ?<CR>:nohlsearch<CR>]], { silent = true, desc = "Previous header" })
+-- Turn current line into a bullet point list item
+vim.keymap.set("n", "<leader>bl", "I- <Esc>", { desc = "Make list item" })
+-- Down or up navigation by visual lines if wrapped text
+vim.keymap.set("n", "j", "gj", { silent = true })
+vim.keymap.set("n", "k", "gk", { silent = true })
+
