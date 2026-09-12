@@ -1,9 +1,31 @@
+vim.g.markdown_folding = 1
+
 -- Hard wrapping - at 80 characters
 vim.opt_local.formatoptions:append({ "t" })
 vim.opt_local.textwidth = 80
 
 -- Automatically treat list items nicely when hitting Enter
 vim.opt_local.formatoptions:append("r")
+
+-- keymaps focused on markdown
+-- Toggle conceallevel: 0 no conceal; 2 conceal bold/ital
+vim.keymap.set('n', '<localleader>tc', function()       
+  if vim.opt_local.conceallevel:get() == 0 then    
+    vim.opt_local.conceallevel = 2                 
+    print("Conceal level set to 2")                
+  else                                             
+    vim.opt_local.conceallevel = 0                 
+    print("Conceal level set to 0")                
+  end                                              
+end, { desc = "Toggle [C]onceal level (0/2)" })    
+-- Re-align paragraph under cursor to match margin limits if a md file:
+--    gq triggers internal formatter; ap = "around paragraph".
+vim.keymap.set("n", "Q", "gqap", { desc = "Format current paragraph" })
+-- Jump to next/previous markdown header
+vim.keymap.set("n", "]]", [[:/^\s*#\+ /<CR>:nohlsearch<CR>]], { silent = true, desc = "Next header" })
+vim.keymap.set("n", "[[", [[:?^\s*#\+ ?<CR>:nohlsearch<CR>]], { silent = true, desc = "Previous header" })
+-- Turn current line into a bullet point list item
+vim.keymap.set("n", "<localleader>bl", "I- <Esc>", { desc = "Make list item" })
 
 -- ****************************************************************************
 -- Open glow with buffer in native vertical split window on right
@@ -29,7 +51,7 @@ vim.keymap.set(
 -- Assumes table surrounded by empty lines; cursor inside table; Normal Mode
 vim.keymap.set(
   'n',
-  'at',
+  '<localleader>ta',
   function()
     -- Feed keys for: ga (align) + ip (inner paragraph) + s (split) + | (pipe)
     -- + (confirm)
@@ -61,7 +83,7 @@ vim.keymap.set(
 -- ****************************************************************************
 vim.keymap.set(
     'i',
-    'msk3',
+    '<localleader>m3',
     [[| Head1 | Head2 | Head3 |<CR>|:--- |:--- |:--- |<CR>| | | |]], 
     { buffer = true, desc = "Insert markdown table-3 skeleton" }
 )
@@ -71,7 +93,7 @@ vim.keymap.set(
 -- ****************************************************************************
 vim.keymap.set(
     'i',
-    'msk2',
+    '<localleader>m2',
     [[| Head1 | Head2 | <CR>|:--- |:--- |<CR>| | |]], 
     { buffer = true, desc = "Insert markdown table-2 skeleton" }
 )
@@ -131,3 +153,142 @@ vim.keymap.set(
   { buffer = true, silent = true, desc = "Add new blank table row below" })
 
 
+local M = {}
+
+-- ------------------------------------------------------------------------      
+-- **************  Text objects - chapters/code blocks ********************      
+-- ------------------------------------------------------------------------      
+-- Define chapter: heading and following to next equal/higher heading or EOF     
+-- Define code block: everything between two ``` lines                           
+-- Operating on text objects uses c/d/y/gq/etc. cmd and i(nner) and a(round)     
+-- Via vim handlers for visual mode (xmap) and operator-pending mode (omap)      
+-- To create a custom text obj. is to register a function for both xmap & omap   
+-- i(nner) excludes delimiters; a(round) includes them                           
+-- Algorithm: from cursor, go upward to find delim (recording level if heading); 
+--    then down to find boundary. i.e., start from anywhere inside aimed object  
+-- Once defined, ih and ah are used with operator                                
+                                                                                 
+function M.select_chapter(around)                                                
+-- standard lua, buf or buffer is idiomatic for object, string or file handle.   
+-- neovim lua, bufnr, buf, or buf_id idiomatic for integer pointing to txt buf   
+-- bufnr has tradition in nvim because of vimscript bufnr() built in,            
+--  but buf or buf_id would be truer to standard lua coding                      
+  local bufnr = 0                                                                
+-- nvim_win_get_cursor({integer}) current window is 0                            
+  local cursor = vim.api.nvim_win_get_cursor(0)                                  
+-- Cursor({lnum}, {col} [,{offset}])                                             
+  local row = cursor[1]                                                          
+-- vim.api.nvim_buf_get_lines({buf}, {start}, {end}, {indexing})                 
+-- 0 for start means current line                                                
+-- -1 for end means index past last line(?)                                      
+-- false for indexing means out-of-bounds not an error(?)                        
+-- vim.api.nvim_buf_get_lines(0,0,-1,false) idiomatic for get entire buffer      
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)                  
+-- hash in front of a variable is the length operator                            
+--  returning # of characters in a string or # of items in an array/table        
+  local total = #lines                                                           
+                                                                                 
+-- Now find heading at or above cursor                                           
+  local start_row = nil                                                          
+  local heading_level = nil                                                      
+  for i = row, 1, -1 do                                                          
+    -- match("^(#)%s") specifies start of line #s and %s whitespace following    
+    local m = lines[i]:match("^(#+)%s")                                          
+    if m then                                                                    
+      start_row = i                                                              
+      heading_level = #m                                                         
+      break                                                                      
+    end                                                                          
+  end                                                                            
+  if not start_row then return end                                               
+                                                                                 
+-- Find the end: next heading of same or higher level, or EOF                    
+  local end_row = total                                                          
+  for i = start_row + 1, total do                                                
+    local m = lines[i]:match("^(#+)%s")                                          
+    if m and #m <= heading_level then                                            
+      end_row = i - 1                                                            
+      while end_row > start_row and lines[end_row]:match("^%s*$") do             
+        end_row = end_row - 1                                                    
+      end                                                                        
+      break                                                                      
+    end                                                                          
+  end                                                                            
+                                                                                 
+  local sel_start = around and start_row or start_row + 1                        
+  if sel_start > end_row then sel_start = end_row end                            
+                                                                                 
+  vim.cmd("normal! \27")                                                         
+  vim.api.nvim_win_set_cursor(0, { sel_start, 0 })                               
+  vim.cmd("normal! V")                                                           
+  vim.api.nvim_win_set_cursor(0, { end_row, 0 })                                 
+end                                                                              
+
+-- Codeblock text object
+-- ac and ic will be around and inner motions
+-- algorithm is walking up to find opening code fence, then down to find close
+-- opening fences found as odd-number; closing as even
+
+function M.select_codeblock(around)                                                 
+  local bufnr = 0                                                                 
+  local cursor = vim.api.nvim_win_get_cursor(0)                                   
+  local row = cursor[1]                                                           
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)                   
+  local total = #lines                                                            
+                                                                                  
+  local fence_open = nil                                                           
+  for i = row, 1, -1 do                                                           
+    if lines[i]:match("^```") then                                           
+      local count = 0
+      for j = 1, i do
+        if lines[j]:match("^```") then count = count + 1 end
+      end
+      if count % 2 == 1 then
+        fence_open = i
+        break                                                                       
+      end                                                                           
+    end
+  end
+  if not fence_open then return end
+
+  local fence_close = nil                                     
+  for i = fence_open + 1, total do                                      
+    if lines[i]:match("^```") then                           
+       fence_close = i                                       
+       break                                                
+    end                                                    
+  end                                                     
+  if not fence_close then return end                     
+
+  local sel_start = around and fence_open or fence_open + 1
+  local sel_end = around and fence_close or fence_close - 1
+  if sel_start > sel_end then sel_start = sel_end end                            
+
+  vim.cmd("normal! \27")                                                         
+  vim.api.nvim_win_set_cursor(0, { sel_start, 0 })                               
+  vim.cmd("normal! V")                                                           
+  vim.api.nvim_win_set_cursor(0, { end_row, 0 })                                 
+end                                                                              
+
+vim.api.nvim_create_autocmd("FileType", { 
+  pattern = "markdown",
+  callback = function()
+    local opts = { buffer = true, silent = true }
+    vim.keymap.set("x", "ih", function()
+M.select_chapter(false) end, opts)
+    vim.keymap.set("x", "ah", function()
+M.select_chapter(true) end, opts)
+    vim.keymap.set("o", "ih", function()
+M.select_chapter(false) end, opts)
+    vim.keymap.set("o", "ah", function()
+M.select_chapter(true) end, opts)
+    vim.keymap.set("x", "ic", function()
+M.select_codeblock(false) end, opts)
+    vim.keymap.set("x", "ac", function()
+M.select_codeblock(true) end, opts)
+    vim.keymap.set("o", "ic", function()
+M.select_codeblock(false) end, opts)
+    vim.keymap.set("o", "ac", function()
+M.select_codeblock(true) end, opts)
+  end,
+})

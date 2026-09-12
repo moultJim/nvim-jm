@@ -1,7 +1,10 @@
 -- ========================================================================== --
 -- 1. THEME & TRANSPARENCY (Safe for all themes)
 -- ========================================================================== --
-vim.cmd.colorscheme("catppuccin") -- also good: sorbet, habamax, unokai
+pcall(function()
+  require("catppuccin").load()
+end)
+-- vim.cmd.colorscheme("catppuccin-nvim") -- also good: sorbet, habamax, unokai
 
 -- Fix: Autocommand ensures transparency survives theme switches
 vim.api.nvim_create_autocmd("ColorScheme", {
@@ -51,6 +54,9 @@ vim.opt.scrolloff = 10         -- keep 10 lines above/below cursor
 vim.opt.sidescrolloff = 8      -- keep 8 positions to left/right of cursor
 vim.opt.spell = false          -- disable spell check by default
 vim.opt.breakindent = true     -- on wrapped lines, preserve indent
+vim.opt.linebreak = true       -- on wrapped lines, select natural for display
+vim.opt.shm = "at"             -- abbreviate file messages; truncate as needed
+vim.opt.shortmess:append("c")  -- suppress built-in completion menu messages
 
 -- ========================================================================== --
 -- 4. INDENTATION
@@ -83,7 +89,9 @@ vim.opt.showmode = false       -- handled by statusline
 
 -- Code Completion Adjustments (Removed invalid autocomplete lines)
 vim.opt.complete = '.,w,b,o'
-vim.opt.completeopt = "menuone,noselect,fuzzy" 
+vim.opt.completeopt = "menu,menuone,noselect,fuzzy" 
+vim.opt.autocomplete = true
+vim.opt.autocompletedelay = 200
 vim.opt.pumheight = 10         -- popupmenu height
 vim.opt.pumblend = 10         -- popupmenu transparency
 vim.opt.winblend = 0          -- floating window transparency

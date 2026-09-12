@@ -5,10 +5,51 @@ vim.pack.add({
     { src = "https://github.com/nvim-mini/mini.nvim" }
 })
 
-vim.lsp.enable({ 'lua_ls' })
+vim.lsp.config('lua_ls', {
+  cmd = { 'lua_language-server' },
+
+  filetypes = { 'lua' },
+
+  root_markers = {
+    '.luarc.json',
+    '.luarc.jsonc',
+    '.luacheckrc',
+    '.stylua.toml',
+    '.git'
+  },
+
+  settings = {
+    Lua = { 
+      format = {
+        enable = true, 
+        defaultConfig = { 
+          indent_style = "space", 
+          indent_size = "2", 
+        }
+      },
+      runtime = { 
+        version = 'LuaJIT', 
+      },
+      diagnostics = { 
+        globals = { 'vim' },
+      }, 
+      workspace = { 
+        library = vim.api.nvim_get_runtime_file("", true),
+        checkThirdParty = false, 
+      }, 
+      telemetry = { enable = false },
+    },
+  },
+})
 
 require('catppuccin').setup({ flavour = 'mocha' })
 require('mini.icons').setup()
+require('mini.basics').setup()
+require('mini.hues').setup({
+  background = '#19213a',
+  foreground = '#c4c6cd',
+  saturation = 'medium',
+  accent = 'blue' })
 require('mini.align').setup()
 require('mini.git').setup()
 require('mini.diff').setup()
@@ -18,14 +59,17 @@ require('mini.pick').setup()
 require('mini.cmdline').setup()
 require('mini.extra').setup()
 require('mini.tabline').setup()
+require('mini.trailspace').setup()
+require('mini.surround').setup()
 
 -- -----------------------------------------------------------
 -- Block for mini.snippets configuration in pack.lua      
 -- -------------------------------------------------------
 local gen_loader = require('mini.snippets').gen_loader                                                              
                                                                                                                     
--- Resolve your custom friendly-snippets path adaptively (handling Windows/Unix styles safely)                      
-local friendly_snippets_path = vim.fn.expand('~/.local/share/nvim-jm/site/pack/core/opt/friendly-snippets/snippets')
+-- Resolve custom friendly-snippets path adaptively                       
+local friendly_snippets_path =
+  vim.fn.expand('~/.local/share/nvim-jm/site/pack/core/opt/friendly-snippets/snippets')
                                                                                                                     
 require('mini.snippets').setup({                                                                                    
   snippets = {                                                                                                      
@@ -35,7 +79,7 @@ require('mini.snippets').setup({
     -- 2. Load the standard runtimepath snippets                                                                    
     gen_loader.from_lang(),                                                                                         
                                                                                                                     
-    -- 3. Load the localized friendly-snippets matching the active buffer language                                  
+    -- 3. Load localized friendly-snippets matching the active buffer language                                  
     gen_loader.from_lang({ path = friendly_snippets_path }),                                                        
   },                                                                                                                
 })                                                                                                                  
@@ -54,28 +98,21 @@ miniclue.setup({
   triggers = {
     -- Leader triggers
     { mode = { 'n', 'x' }, keys = '<Leader>' },
-
     -- `[` and `]` keys
     { mode = 'n', keys = '[' },
     { mode = 'n', keys = ']' },
-
     -- Built-in completion
     { mode = 'i', keys = '<C-x>' },
-
     -- `g` key
     { mode = { 'n', 'x' }, keys = 'g' },
-
     -- Marks
     { mode = { 'n', 'x' }, keys = "'" },
     { mode = { 'n', 'x' }, keys = '`' },
-
     -- Registers
     { mode = { 'n', 'x' }, keys = '"' },
     { mode = { 'i', 'c' }, keys = '<C-r>' },
-
     -- Window commands
     { mode = 'n', keys = '<C-w>' },
-
     -- `z` key
     { mode = { 'n', 'x' }, keys = 'z' },
   },
@@ -98,44 +135,78 @@ miniclue.setup({
 require('mini.statusline').setup({
   content = {
     active = function()
-      -- 1. Grab the default statusline components
-      local MiniStatusline = require('mini.statusline')
-      local mode, mode_hl = MiniStatusline.section_mode({ truncate_width = 120 })
-      local git           = MiniStatusline.section_git({ truncate_width = 75 })
-      local diff          = MiniStatusline.section_diff({ truncate_width = 75 })
-      local diagnostics   = MiniStatusline.section_diagnostics({ truncate_width = 75 })
-      local filename      = MiniStatusline.section_filename({ truncate_width = 140 })
-      local fileinfo      = MiniStatusline.section_fileinfo({ truncate_width = 120 })
-      local location      = MiniStatusline.section_location({ truncate_width = 75 })
-      local search        = MiniStatusline.section_searchcount({ truncate_width = 75 }) -- Fixed here
+      -- 1. Single letter mode formatting
+      local mode, mode_hl = MiniStatusline.section_mode({ trunc_width = 120 })
+      local mode_map = {
+        ['Normal']   = 'N',
+        ['Insert']   = 'I',
+        ['Visual']   = 'V',
+        ['V-Line']   = 'VL',
+        ['V-Block']  = 'VB',
+        ['Replace']  = 'R',
+        ['Command']  = 'C',
+        ['Terminal'] = 'T',
+      }
+      -- Apply mapping if it exists, otherwise fallback to first letter
+      mode = mode_map[mode] or mode:sub(1, 1)
 
-      -- 2. Build your custom wrap/spell indicators
-      local extra_info = {}
-      if vim.opt_local.spell:get() then
-        table.insert(extra_info, "SPELL")
-      end
-      if vim.opt_local.wrap:get() then
-        table.insert(extra_info, "WRAP")
-      end
+      -- 2. Fetch other standard sections
+      local git         = MiniStatusline.section_git({ trunc_width = 40 })
+      local diff        = MiniStatusline.section_diff({ trunc_width = 75 })
+      local diagnostics = MiniStatusline.section_diagnostics({ trunc_width = 75 })
+      local location    = MiniStatusline.section_location({ trunc_width = 90 })
       
-      -- Format the extra strings (e.g., "[SPELL|WRAP]")
-      local extra_str = ""
-      if #extra_info > 0 then
-        extra_str = "[" .. table.concat(extra_info, "|") .. "] "
-      end
+      -- FIXED: Changed 'section_searchfunc' to 'section_search'
+      local search      = MiniStatusline.section_searchcount({ trunc_width = 75 })
 
-      -- 3. Assemble and return the final statusline format string
+      -- 3. Truncate filename (using 'short' to only show filename)
+      local filename    = MiniStatusline.section_filename({ trunc_width = 140 })
+
+      -- 4. Strip fileencoding out of section_fileinfo
+      local fileinfo    = MiniStatusline.section_fileinfo({ trunc_width = 120 })
+      -- Clean it up using string manipulation to remove encoding (e.g., "[utf-8]")
+      fileinfo = fileinfo:gsub("%s*%[.-%]%s*", "")
+
+      -- 5. Combine and return the minimal statusline string
       return MiniStatusline.combine_groups({
         { hl = mode_hl,                  strings = { mode } },
         { hl = 'MiniStatuslineDevinfo',  strings = { git, diff, diagnostics } },
-        '%<', -- Mark general truncate point
+        '%<', -- Mark where to truncate the line if window is too narrow
         { hl = 'MiniStatuslineFilename', strings = { filename } },
-        '%=', -- End left alignment
-        { hl = 'MiniStatuslineFilename', strings = { extra_str } }, -- Your custom indicators
+        '%=', -- Right-align alignment separator
         { hl = 'MiniStatuslineFileinfo', strings = { fileinfo } },
         { hl = mode_hl,                  strings = { search, location } },
       })
-    end,
-  },
+    end
+  }
+})
+
+
+-- ****************************************************************************
+-- Custom Markdown Folding Engine (Replaces the broken built-in one)
+_G.markdown_fold_expr = function(lnum)
+  local line = vim.fn.getline(lnum)
+  -- If the line starts with 1 to 6 '#' characters followed by a space, it's a header
+  if line:match("^#+%s") then
+    -- Return '>' followed by the number of '#' characters to set the fold level
+    local _, heading_depth = line:find("^#+")
+    return ">" .. heading_depth
+  end
+  -- For all other lines (text, tables, lists), just keep the current fold level
+  return "="
+end
+
+-- Force our custom engine to load on Markdown files
+vim.api.nvim_create_autocmd({ "BufWinEnter", "BufEnter" }, {
+  pattern = "*.md",
+  callback = function()
+    vim.schedule(function()
+      if vim.bo.filetype == "markdown" then
+        vim.opt_local.foldmethod = 'expr'
+        vim.opt_local.foldexpr = 'v:lua.markdown_fold_expr(v:lnum)'
+        vim.opt_local.foldlevel = 99
+      end
+    end)
+  end,
 })
 
