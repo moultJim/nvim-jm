@@ -5,42 +5,7 @@ vim.pack.add({
     { src = "https://github.com/nvim-mini/mini.nvim" }
 })
 
-vim.lsp.config('lua_ls', {
-  cmd = { 'lua_language-server' },
-
-  filetypes = { 'lua' },
-
-  root_markers = {
-    '.luarc.json',
-    '.luarc.jsonc',
-    '.luacheckrc',
-    '.stylua.toml',
-    '.git'
-  },
-
-  settings = {
-    Lua = { 
-      format = {
-        enable = true, 
-        defaultConfig = { 
-          indent_style = "space", 
-          indent_size = "2", 
-        }
-      },
-      runtime = { 
-        version = 'LuaJIT', 
-      },
-      diagnostics = { 
-        globals = { 'vim' },
-      }, 
-      workspace = { 
-        library = vim.api.nvim_get_runtime_file("", true),
-        checkThirdParty = false, 
-      }, 
-      telemetry = { enable = false },
-    },
-  },
-})
+vim.lsp.enable('lua_ls')
 
 require('catppuccin').setup({ flavour = 'mocha' })
 require('mini.icons').setup()

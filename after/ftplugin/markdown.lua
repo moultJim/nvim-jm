@@ -17,15 +17,19 @@ vim.keymap.set('n', '<localleader>tc', function()
     vim.opt_local.conceallevel = 0                 
     print("Conceal level set to 0")                
   end                                              
-end, { desc = "Toggle [C]onceal level (0/2)" })    
+end, { buffer = true, desc = "Toggle [C]onceal level (0/2)" })    
 -- Re-align paragraph under cursor to match margin limits if a md file:
 --    gq triggers internal formatter; ap = "around paragraph".
-vim.keymap.set("n", "Q", "gqap", { desc = "Format current paragraph" })
+vim.keymap.set("n", "Q", "gqap",
+  { buffer = true, desc = "Format current paragraph" })
 -- Jump to next/previous markdown header
-vim.keymap.set("n", "]]", [[:/^\s*#\+ /<CR>:nohlsearch<CR>]], { silent = true, desc = "Next header" })
-vim.keymap.set("n", "[[", [[:?^\s*#\+ ?<CR>:nohlsearch<CR>]], { silent = true, desc = "Previous header" })
+vim.keymap.set("n", "]]", [[:/^\s*#\+ /<CR>:nohlsearch<CR>]],
+  { buffer = true, silent = true, desc = "Next header" })
+vim.keymap.set("n", "[[", [[:?^\s*#\+ ?<CR>:nohlsearch<CR>]],
+  { buffer = true, silent = true, desc = "Previous header" })
 -- Turn current line into a bullet point list item
-vim.keymap.set("n", "<localleader>bl", "I- <Esc>", { desc = "Make list item" })
+vim.keymap.set("n", "<localleader>bl", "I- <Esc>",
+  { buffer = true,  desc = "Make list item" })
 
 -- ****************************************************************************
 -- Open glow with buffer in native vertical split window on right
@@ -65,7 +69,7 @@ vim.keymap.set(
     true
     )
   end,
-  { desc = 'Align Markdown table' }
+  { buffer = true, desc = 'Align Markdown table' }
 )
 
 -- ****************************************************************************
@@ -153,7 +157,6 @@ vim.keymap.set(
   { buffer = true, silent = true, desc = "Add new blank table row below" })
 
 
-local M = {}
 
 -- ------------------------------------------------------------------------      
 -- **************  Text objects - chapters/code blocks ********************      
@@ -167,6 +170,7 @@ local M = {}
 -- Algorithm: from cursor, go upward to find delim (recording level if heading); 
 --    then down to find boundary. i.e., start from anywhere inside aimed object  
 -- Once defined, ih and ah are used with operator                                
+local M = {}
                                                                                  
 function M.select_chapter(around)                                                
 -- standard lua, buf or buffer is idiomatic for object, string or file handle.   
