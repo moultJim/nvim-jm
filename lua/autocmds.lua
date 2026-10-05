@@ -5,21 +5,33 @@ local help_group = vim.api.nvim_create_augroup(
   "HelpWindowManagement",
   { clear = true })
 
--- Open file with cursor where exited
--- BufReadPost event fires after nvim finishes reading file into buffer
+local restore_group = vim.api.nvim_create_augroup("RestoreCursor", { clear = true })
+
 vim.api.nvim_create_autocmd("BufReadPost", {
-  callback = function()
--- nvim_buf_get_mark(0, '"') fetches position of last exit mark    
-    local mark = vim.api.nvim_buf_get_mark(0, '"')
--- checking saved line # is valid and still exists within current line count
-    local lcount = vim.api.nvim_buf_line_count(0)
-    if mark[1] > 0 and mark[1] <= lcount then
-      pcall(vim.api.nvim_win_set_cursor, 0, mark)
+  group = restore_group,
+  desc = "Restore last known cursor position safely after plugins idle",
+  callback = function(opts)
+    local exclude = { "gitcommit", "gitrebase", "commit" }
+    if vim.tbl_contains(exclude, vim.bo[opts.buf].filetype) then
+      return
+    end
+
+    local mark = vim.api.nvim_buf_get_mark(opts.buf, '"')
+    local row = mark[1]
+    local lcount = vim.api.nvim_buf_line_count(opts.buf)
+
+    if row > 1 and row <= lcount then
+      vim.schedule(function()
+        if vim.api.nvim_buf_is_valid(opts.buf) then
+          pcall(vim.api.nvim_win_set_cursor, 0, mark)
+          vim.cmd("normal! zvzz")
+        end
+      end)
     end
   end,
 })
 
--- Don't autocomment next line after comment
+  -- Don't autocomment next line after comment
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function()
 -- "r" is auto after <cr>; "o" after o or O ins; "c" is for hard-wraps
@@ -46,5 +58,24 @@ vim.api.nvim_create_autocmd("FileType", {
       desc = "Close help and return to previous window" }
     )
   end,
+})
+
+-- Global Terminal Autocommands --
+local term_group = vim.api.nvim_create_augroup("GlobalTerminalSettings", { clear = true })
+
+vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter" }, {
+    group = term_group,
+    pattern = "term://*", -- Only triggers on terminal URIs
+    callback = function()
+        if vim.bo.buftype == "terminal" then
+            -- Clean up the UI elements for a distraction-free window
+            vim.opt_local.number = false
+            vim.opt_local.relativenumber = false
+            vim.opt_local.signcolumn = "no"
+            
+            -- Automatically jump into insert mode
+            vim.cmd("startinsert")
+        end
+    end,
 })
 

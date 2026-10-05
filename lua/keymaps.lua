@@ -1,5 +1,3 @@
-vim.g.mapleader = " "
-vim.g.maplocalleader = " "
 -- vim.keymap.set(modes, lhs, rhs, opts)
 -- modes single string or table (e.g., {"n", "v"})
 -- "x" is visual only; "v" visual and select

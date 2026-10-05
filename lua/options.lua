@@ -135,25 +135,22 @@ vim.opt.selection = "inclusive"
 vim.opt.mouse = ""           -- disable 
 
 -- ========================================================================== --
--- 8. CLIPBOARD OPTIMIZATION
+-- 8. CLIPBOARD OPTIMIZATION (OSC 52 for ChromeOS Terminal)
 -- ========================================================================== --
 vim.g.clipboard = {
-  name = 'myClipboard',
+  name = 'OSC 52',
   copy = {
-    ['+'] = { 'xclip', '-i', '-selection', 'clipboard' },
-    ['*'] = { 'xclip', '-i', '-selection', 'primary' },
+    ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
+    ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
   },
+  -- Force an immediate no-op on paste queries to prevent terminal timeout hangs
   paste = {
-    ['+'] = { 'xclip', '-o', '-selection', 'clipboard' },
-    ['*'] = { 'xclip', '-o', '-selection', 'primary' },
+    ['+'] = function() return vim.fn.split(vim.fn.getreg(''), '\n') end,
+    ['*'] = function() return vim.fn.split(vim.fn.getreg(''), '\n') end,
   },
-  cache_enabled = 1,
 }
 
--- Defer system clipboard linkage to preserve lightning-fast startup
-vim.schedule(function()
-  vim.opt.clipboard = 'unnamedplus'
-end)
+vim.opt.clipboard = 'unnamedplus'
 
 vim.opt.modifiable = true
 vim.opt.encoding = "utf-8"
