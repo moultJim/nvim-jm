@@ -8,7 +8,10 @@ vim.pack.add({
 vim.lsp.enable('lua_ls')
 
 require('catppuccin').setup({ flavour = 'mocha' })
-require('mini.icons').setup()
+local mini_icons = require('mini.icons')
+  mini_icons.setup({})
+  -- This tells Neovim to use mini.icons whenever a plugin asks for devicons
+  mini_icons.mock_nvim_web_devicons()
 require('mini.basics').setup()
 require('mini.hues').setup({
   background = '#19213a',
