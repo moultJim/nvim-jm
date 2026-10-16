@@ -1,11 +1,34 @@
 vim.g.markdown_folding = 1
+-- Set folding to calculate based on an expression
+vim.opt_local.foldmethod = "expr"
+vim.opt_local.foldexpr = "v:lua.MarkdownFoldLevel()"
 
--- Hard wrapping - at 80 characters
-vim.opt_local.formatoptions:append({ "t" })
+-- Hard wrapping - at 80 characters, and treat list items nicely
+vim.opt_local.formatoptions:append({ "t", "r" })
 vim.opt_local.textwidth = 80
 
--- Automatically treat list items nicely when hitting Enter
-vim.opt_local.formatoptions:append("r")
+-- 1. Structural Logic: Group tables and text under headers
+_G.MarkdownFoldLevel = function()
+  local line = vim.fn.getline(vim.v.lnum)
+
+  -- Count the '#' characters at the start of the line
+  local _, count = line:gsub("^#+", "")
+  if count > 0 then
+    return ">" .. count  -- Starts a fold at this header level (e.g., >2)
+  end
+
+  return "="  -- Stays at the current fold level
+end
+
+-- 2. Visual Logic: Keep the header visible when the fold closes
+_G.MyMarkdownFoldText = function()
+  local line = vim.fn.getline(vim.v.foldstart)
+  local lines_count = vim.v.foldend - vim.v.foldstart + 1
+  return line .. "  ... (" .. lines_count .. " lines)"
+end
+
+vim.opt_local.foldtext = "v:lua.MyMarkdownFoldText()"
+
 
 -- keymaps focused on markdown
 -- Toggle conceallevel: 0 no conceal; 2 conceal bold/ital
