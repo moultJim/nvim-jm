@@ -45,13 +45,14 @@ require('mini.pick').setup()
 require('mini.cmdline').setup()
 require('mini.extra').setup()
 require('mini.tabline').setup()
-require('mini.trailspace').setup()
 require('mini.surround').setup()
 require('mini.comment').setup()
--- Add this where you load or configure your mini.nvim modules
 require('mini.misc').setup()
-require('mini.misc').setup_restore_cursor()
-
+MiniMisc.setup_restore_cursor()
+MiniMisc.setup_auto_root()
+MiniMisc.setup_termbg_sync()
+require('mini.animate').setup()
+require('mini.trailspace').setup()
 
 -- -----------------------------------------------------------
 -- Block for mini.snippets configuration in pack.lua
