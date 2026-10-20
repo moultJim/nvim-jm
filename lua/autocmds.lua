@@ -60,20 +60,30 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
--- Global Terminal Autocommands --
+-- Global Terminal Quality-of-Life Autocommands
 local term_group = vim.api.nvim_create_augroup("GlobalTerminalSettings", { clear = true })
 
 vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter" }, {
     group = term_group,
-    pattern = "term://*", -- Only triggers on terminal URIs
+    pattern = "term://*",
     callback = function()
         if vim.bo.buftype == "terminal" then
-            -- Clean up the UI elements for a distraction-free window
+            -- 1. Distraction-free UI adjustments
             vim.opt_local.number = false
             vim.opt_local.relativenumber = false
             vim.opt_local.signcolumn = "no"
             
-            -- Automatically jump into insert mode
+            -- 2. Force-inject the toggle-out keymap directly inside this specific terminal buffer
+            -- This overrides any environment/Chromebook key swallowing.
+            local bufnr = vim.api.nvim_get_current_buf()
+            vim.keymap.set("t", "<space>tt", function()
+                -- Drop out of Terminal mode into Normal mode instantly
+                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "n", false)
+                -- Force hide the floating window via the user command we made
+                vim.cmd("Floaterminal")
+            end, { buffer = bufnr, desc = "Toggle terminal from within" })
+
+            -- 3. Automatically jump into insert mode
             vim.cmd("startinsert")
         end
     end,
